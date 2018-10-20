@@ -115,21 +115,45 @@ library(boot)
 set.seed(1)
 nsw <- read.dta("nsw.dta")
 
-nsw.model <- lm(re78 ~ treat, data = nsw)
-summary(nsw.model)
-
-boot.coef <- function(model, index) return(coef(model)[2])
-
-boot.ci <- function(model){
-  coef <- boot(model, boot.coef, 1000)
-  coef.ci <- quantile(coef$t0, c(0.025, 0.975))
-  return(coef.ci)
+#calculate treatment coefficients
+boot.coef <- function(data, index) {
+  model <- lm(re78 ~ treat, data = data, subset = index)
+  coef.treat <- coef(model)[2]
 }
 
-conf.int1 <- boot.ci(nsw.model)
+#storage vector for coefs
+storage.coef <- rep(NA, 1000)
+#storage data.frame for conf intervals
+storage.ci <- data.frame("2.5%" = rep(NA, 100), "97.5%" = rep(NA, 100))
+
+#getting 100 different confidence intervals using 1000 bootstrapped coefs for each one
+for (k in 1:100) {
+  for (i in 1:1000) { #bootstrapping coefficients 1000 times
+    storage.coef[i] <- boot.coef(nsw, sample(nrow(nsw), nrow(nsw), replace=TRUE))
+  }
+  storage.ci[k,] <- quantile(storage.coef, c(0.025, 0.975))
+}
+
+#averaging confidence intervals
+conf.int1 <- c(mean(storage.ci[,1]), mean(storage.ci[,2]))
+
+#getting analytical confidence interval
+nsw.model <- lm(re78 ~ treat, data = nsw)
 conf.int2 <- confint(nsw.model, level = 0.95)[2,1:2]
 
+#table with simulated and analytical conf intervals
 df3 <- data.frame("Simulation" = conf.int1, "Formula" = conf.int2)
+
+#histogram of bootstrapped coefficients
+hist(storage.coef,
+     main="Bootstrap treatment coefficients", 
+     xlab="Coefficients",
+     breaks = 15,
+     col="grey")
+
+#average of coefficients and coefficient calculated by lm using the whole data
+mean(storage.coef)
+coef(nsw.model)[2]
 
 #question #4 ----
 
