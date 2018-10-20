@@ -1,1 +1,2 @@
-# Assignment-2---CS112
+# Assignment 2 for CS112
+Regression and Bootstrapping 
